@@ -85,15 +85,64 @@ Version 2 supports two output modes:
   "url": "https://www.agego.com/verification-methods",
   "content": "THE AGE VERIFICATION PROCESS...",
   "timestamp": "2025-08-25T15:48:18.703Z",
-  "contentLength": 1744
+  "contentLength": 1744,
+  "urlHash": "a1b2c3d4e5f6789012345678901234567890abcd"
 }
 ```
 
-**Console Mode:** JSON output is printed to stdout for capturing/piping:
+**Console Mode:** JSON output is printed to stdout for capturing/piping.
 
+*Single URL format:*
 ```bash
 node scrape_single.js https://www.agego.com/verification-methods console
-# Outputs JSON directly to console
+```
+```json
+{
+  "url": "https://www.agego.com/verification-methods",
+  "content": "THE AGE VERIFICATION PROCESS...",
+  "timestamp": "2025-08-25T15:48:18.703Z",
+  "contentLength": 1744,
+  "urlHash": "a1b2c3d4e5f6789012345678901234567890abcd"
+}
+```
+
+*Single URL with hash key (consistent with batch):*
+```bash
+node scrape_single.js https://www.agego.com/verification-methods console hash
+```
+```json
+{
+  "a1b2c3d4e5f6789012345678901234567890abcd": {
+    "url": "https://www.agego.com/verification-methods",
+    "content": "THE AGE VERIFICATION PROCESS...",
+    "timestamp": "2025-08-25T15:48:18.703Z",
+    "contentLength": 1744,
+    "urlHash": "a1b2c3d4e5f6789012345678901234567890abcd"
+  }
+}
+```
+
+*Batch format (all URLs as object with SHA1 keys):*
+```bash
+./scrape_all.sh console
+```
+```json
+{
+  "a1b2c3d4e5f6789012345678901234567890abcd": {
+    "url": "https://www.agego.com/verification-methods",
+    "content": "THE AGE VERIFICATION PROCESS...",
+    "timestamp": "2025-08-25T15:48:18.703Z",
+    "contentLength": 1744,
+    "urlHash": "a1b2c3d4e5f6789012345678901234567890abcd"
+  },
+  "ef12345678901234567890abcdef1234567890ab": {
+    "url": "https://www.agego.com/about-us",
+    "content": "ABOUT US CONTENT...",
+    "timestamp": "2025-08-25T15:48:18.703Z",
+    "contentLength": 892,
+    "urlHash": "ef12345678901234567890abcdef1234567890ab"
+  }
+}
 ```
 
 ## Comparison
@@ -105,17 +154,50 @@ node scrape_single.js https://www.agego.com/verification-methods console
 | Speed | Slower | Faster |
 | Output | Single comparison file | Individual JSON files or console |
 | Output Modes | File only | File or console |
+| Hash Keys | ❌ | ✅ (SHA1 of URLs) |
+| Batch Format | N/A | Object with hash keys |
 | Use Case | Monitoring changes | Quick content extraction |
 
 ## Project Structure
 
-- `scrape_agego.js`: Version 1 - Sequential scraping with change detection
-- `scrape_single.js`: Version 2 - Single URL scraper
-- `scrape_all.sh`: Version 2 - Batch script for parallel scraping
-- `scraped_results/`: Output folder for Version 2 JSON files
-- `agegodoc_snapshots.json`: Version 1 - Stores content snapshots
-- `agegodoc_changed.json`: Version 1 - Contains changed content
-- `example.spec.js`: Example Playwright test script
+```
+agego-scraper/
+├── package.json              # Dependencies and npm scripts
+├── README.md                 # This documentation
+├── scrape_agego.js          # Version 1: Sequential with change detection
+├── scrape_single.js         # Version 2: Single URL with flexible output
+├── scrape_all.sh           # Batch processor for parallel execution
+├── scraped_results/        # Output directory for JSON files
+├── test-results/          # Playwright test artifacts
+└── .github/
+    └── copilot-instructions.md
+```
+
+## Key Features
+
+- **Dual Approach**: Sequential change detection vs. fast parallel processing
+- **Flexible Output**: File storage or console output with optional hash keys
+- **Change Detection**: Content comparison with snapshot management (Version 1)
+- **Content Extraction**: Removes navigation and footer elements for clean content
+- **SHA1 Hash Keys**: Consistent URL-to-key mapping for easy data access
+- **Mock Mode**: Test change detection without modifying websites
+- **Parallel Processing**: Fast batch scraping with organized output (Version 2)
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Single URL scraping (file output)
+node scrape_single.js "https://www.agego.com/about-us"
+
+# Batch scraping (console output with hash keys)
+./scrape_all.sh console
+
+# Change detection (sequential)
+npm run scrape:agego
+```
 
 ## Available Scripts
 
@@ -130,12 +212,37 @@ node scrape_single.js https://www.agego.com/verification-methods console
 # Single URL
 node scrape_single.js <URL>              # File output (default)
 node scrape_single.js <URL> file         # File output (explicit)
-node scrape_single.js <URL> console      # Console output
+node scrape_single.js <URL> console      # Console output (single object)
+node scrape_single.js <URL> console hash # Console output (hash key format)
 
 # Batch scraping
 ./scrape_all.sh                          # File output (default)
 ./scrape_all.sh file                     # File output (explicit)
-./scrape_all.sh console                  # Console output
+./scrape_all.sh console                  # Console output (object with SHA1 keys)
+```
+
+### JSON Structure
+
+All output includes:
+- `url`: Original URL
+- `content`: Extracted page content (nav/footer removed)
+- `timestamp`: ISO timestamp when scraped
+- `contentLength`: Length of extracted content
+- `urlHash`: SHA1 hash of the URL (for consistent keying)
+
+### Advanced Usage Examples
+
+```bash
+# Get content length for a specific URL using hash
+url_hash=$(echo -n "https://www.agego.com/verification-methods" | shasum -a 1 | cut -d' ' -f1)
+./scrape_all.sh console | jq ".[\"$url_hash\"].contentLength"
+
+# Extract all URLs and their content lengths
+./scrape_all.sh console | jq 'to_entries[] | "\(.value.url): \(.value.contentLength)"'
+
+# Save batch results and process later
+./scrape_all.sh console > all_results.json
+cat all_results.json | jq 'keys | length'  # Count of URLs scraped
 ```
 
 ## More Info
