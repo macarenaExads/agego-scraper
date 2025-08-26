@@ -1,8 +1,30 @@
+# Node modules
 node_modules/
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/scraped_results/
-/agegodoc_changed.json
-/agegodoc_snapshots.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Scraper outputs
+scraped_results/
+outputs/
+agegodoc_*.json
+test-results/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local

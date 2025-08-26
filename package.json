@@ -1,22 +1,26 @@
 {
-  "name": "agego-scraper",
+  "name": "@exogroup/web-scraper",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Collection of web scrapers for ExoGroup projects",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "scrape:agego": "node scrape_agego.js",
-    "scrape:single": "node scrape_single.js",
-    "scrape:single:console": "node scrape_single.js",
-    "scrape:all": "./scrape_all.sh",
-    "scrape:all:console": "./scrape_all.sh console"
+    "agego:scrape": "cd scrapers/agego && npm run scrape:agego",
+    "agego:single": "cd scrapers/agego && npm run scrape:single",
+    "agego:all": "cd scrapers/agego && npm run scrape:all",
+    "agego:console": "cd scrapers/agego && npm run scrape:all:console"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "workspaces": [
+    "scrapers/*"
+  ],
   "devDependencies": {
-    "@playwright/test": "^1.55.0",
-    "playwright": "^1.55.0"
-  }
+    "playwright": "^1.45.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/exogroup/web-scraper.git"
+  },
+  "keywords": ["scraper", "exogroup", "automation", "data-extraction"]
 }
