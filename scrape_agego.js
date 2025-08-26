@@ -3,6 +3,10 @@ const path = require('path');
 const crypto = require('crypto');
 const { chromium } = require('playwright');
 
+function generateSHA1(text) {
+  return crypto.createHash('sha1').update(text, 'utf8').digest('hex');
+}
+
 const SCRAPE_CONFIG = {
   name: 'agegodoc',
   urls: [
@@ -76,14 +80,33 @@ async function scrapeAndCompare() {
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     const content = await extractMainContent(page, url);
     const hash = hashContent(content);
-    newSnapshots[url] = { hash, content };
+    const timestamp = new Date().toISOString();
+    const urlHash = generateSHA1(url);
+    
+    newSnapshots[urlHash] = { 
+      url,
+      content, 
+      timestamp,
+      contentLength: content.length,
+      urlHash,
+      hash
+    };
 
-    if (!prevSnapshots[url]) {
+    // For comparison, we need to check against the URL hash in previous snapshots
+    if (!prevSnapshots[urlHash]) {
       report.push({ url, status: 'NEW', details: 'First time scraped.' });
-      if (!isFirstRun) changedContent.push({ url, content });
-    } else if (prevSnapshots[url].hash !== hash) {
+      if (!isFirstRun) {
+        changedContent.push({ 
+          url, 
+          content,
+          timestamp,
+          contentLength: content.length,
+          urlHash
+        });
+      }
+    } else if (prevSnapshots[urlHash].hash !== hash) {
       // Find diff (simple line diff)
-      const oldLines = prevSnapshots[url].content.split('\n');
+      const oldLines = prevSnapshots[urlHash].content.split('\n');
       const newLines = content.split('\n');
       const added = newLines.filter(line => !oldLines.includes(line));
       const removed = oldLines.filter(line => !newLines.includes(line));
@@ -94,7 +117,13 @@ async function scrapeAndCompare() {
         added,
         removed,
       });
-      changedContent.push({ url, content });
+      changedContent.push({ 
+        url, 
+        content,
+        timestamp,
+        contentLength: content.length,
+        urlHash
+      });
     } else {
       report.push({ url, status: 'UNCHANGED' });
     }

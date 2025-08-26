@@ -4,3 +4,5 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /scraped_results/
+/agegodoc_changed.json
+/agegodoc_snapshots.json

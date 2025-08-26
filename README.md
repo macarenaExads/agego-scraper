@@ -154,7 +154,8 @@ node scrape_single.js https://www.agego.com/verification-methods console hash
 | Speed | Slower | Faster |
 | Output | Single comparison file | Individual JSON files or console |
 | Output Modes | File only | File or console |
-| Hash Keys | ❌ | ✅ (SHA1 of URLs) |
+| Hash Keys | ✅ (SHA1 of URLs) | ✅ (SHA1 of URLs) |
+| JSON Format | ✅ Consistent structure | ✅ Consistent structure |
 | Batch Format | N/A | Object with hash keys |
 | Use Case | Monitoring changes | Quick content extraction |
 
@@ -223,26 +224,42 @@ node scrape_single.js <URL> console hash # Console output (hash key format)
 
 ### JSON Structure
 
-All output includes:
-- `url`: Original URL
-- `content`: Extracted page content (nav/footer removed)
-- `timestamp`: ISO timestamp when scraped
-- `contentLength`: Length of extracted content
-- `urlHash`: SHA1 hash of the URL (for consistent keying)
+All output uses consistent format with SHA1 hash keys:
+- **Keys**: SHA1 hash of the URL (for consistent identification)
+- **Values**: Object containing:
+  - `url`: Original URL
+  - `content`: Extracted page content (nav/footer removed)
+  - `timestamp`: ISO timestamp when scraped
+  - `contentLength`: Length of extracted content
+  - `urlHash`: SHA1 hash of the URL (same as key)
+
+Both versions now generate identical JSON structure for easy data interchange and processing.
 
 ### Advanced Usage Examples
 
 ```bash
-# Get content length for a specific URL using hash
+# Get content length for a specific URL using hash (works with both versions)
 url_hash=$(echo -n "https://www.agego.com/verification-methods" | shasum -a 1 | cut -d' ' -f1)
+
+# Version 1 snapshot data
+jq ".[\"$url_hash\"].contentLength" agegodoc_snapshots.json
+
+# Version 2 console output
 ./scrape_all.sh console | jq ".[\"$url_hash\"].contentLength"
 
-# Extract all URLs and their content lengths
-./scrape_all.sh console | jq 'to_entries[] | "\(.value.url): \(.value.contentLength)"'
+# Extract all URLs and their content lengths from any hash-based JSON
+cat agegodoc_snapshots.json | jq 'to_entries[] | "\(.value.url): \(.value.contentLength)"'
 
-# Save batch results and process later
-./scrape_all.sh console > all_results.json
-cat all_results.json | jq 'keys | length'  # Count of URLs scraped
+# Compare snapshot with current data
+./scrape_all.sh console > current_data.json
+jq -s '.[0] as $snapshots | .[1] as $current | 
+  ($snapshots | keys) as $snapshot_keys | 
+  ($current | keys) as $current_keys | 
+  {
+    "in_both": ($snapshot_keys | map(select(. as $k | $current_keys | index($k)))),
+    "only_in_snapshots": ($snapshot_keys | map(select(. as $k | $current_keys | index($k) | not))),
+    "only_in_current": ($current_keys | map(select(. as $k | $snapshot_keys | index($k) | not)))
+  }' agegodoc_snapshots.json current_data.json
 ```
 
 ## More Info
