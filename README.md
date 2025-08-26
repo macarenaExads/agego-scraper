@@ -34,16 +34,39 @@ MOCK_CONTENT=1 npm run scrape:agego
 
 ## Version 2: Fast Parallel Scraping
 
-Scrapes URLs independently and outputs individual JSON files for each URL. Much faster for bulk scraping.
+Scrapes URLs independently with flexible output options. Much faster for bulk scraping.
 
 ### Usage
 
 ```sh
-# Scrape a single URL
+# Scrape a single URL (saves to file by default)
 npm run scrape:single https://www.agego.com/verification-methods
 
-# Scrape all predefined AgeGo URLs in parallel
+# Scrape with explicit file output
+node scrape_single.js https://www.agego.com/verification-methods file
+
+# Scrape with console output (for capturing/piping)
+node scrape_single.js https://www.agego.com/verification-methods console
+
+# Capture output in scripts
+result=$(node scrape_single.js https://www.agego.com/verification-methods console)
+echo "$result" | jq '.contentLength'
+
+# Save console output to file
+node scrape_single.js https://www.agego.com/verification-methods console > output.json
+
+# Scrape all predefined AgeGo URLs in parallel (saves to files)
 npm run scrape:all
+
+# Scrape all predefined AgeGo URLs with console output
+npm run scrape:all:console
+
+# Or use the script directly with output mode
+./scrape_all.sh file
+./scrape_all.sh console
+
+# Capture all results to a single file
+./scrape_all.sh console > all_results.json
 
 # Scrape multiple custom URLs in parallel
 node scrape_single.js https://www.agego.com/verification-methods &
@@ -53,7 +76,9 @@ wait
 
 ### Output
 
-Each URL creates a JSON file in `scraped_results/` with this structure:
+Version 2 supports two output modes:
+
+**File Mode (default):** Each URL creates a JSON file in `scraped_results/` with this structure:
 
 ```json
 {
@@ -64,6 +89,13 @@ Each URL creates a JSON file in `scraped_results/` with this structure:
 }
 ```
 
+**Console Mode:** JSON output is printed to stdout for capturing/piping:
+
+```bash
+node scrape_single.js https://www.agego.com/verification-methods console
+# Outputs JSON directly to console
+```
+
 ## Comparison
 
 | Feature | Version 1 | Version 2 |
@@ -71,7 +103,8 @@ Each URL creates a JSON file in `scraped_results/` with this structure:
 | Execution | Sequential | Parallel |
 | Change Detection | ✅ | ❌ |
 | Speed | Slower | Faster |
-| Output | Single comparison file | Individual JSON files |
+| Output | Single comparison file | Individual JSON files or console |
+| Output Modes | File only | File or console |
 | Use Case | Monitoring changes | Quick content extraction |
 
 ## Project Structure
@@ -87,8 +120,23 @@ Each URL creates a JSON file in `scraped_results/` with this structure:
 ## Available Scripts
 
 - `npm run scrape:agego` - Version 1: Sequential scraping with change detection
-- `npm run scrape:single <URL>` - Version 2: Scrape a single URL
-- `npm run scrape:all` - Version 2: Scrape all predefined URLs in parallel
+- `npm run scrape:single <URL>` - Version 2: Scrape a single URL (file mode)
+- `npm run scrape:all` - Version 2: Scrape all predefined URLs in parallel (file mode)
+- `npm run scrape:all:console` - Version 2: Scrape all predefined URLs in parallel (console mode)
+
+### Command Line Options for Version 2
+
+```bash
+# Single URL
+node scrape_single.js <URL>              # File output (default)
+node scrape_single.js <URL> file         # File output (explicit)
+node scrape_single.js <URL> console      # Console output
+
+# Batch scraping
+./scrape_all.sh                          # File output (default)
+./scrape_all.sh file                     # File output (explicit)
+./scrape_all.sh console                  # Console output
+```
 
 ## More Info
 

@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "scrape:agego": "node scrape_agego.js",
     "scrape:single": "node scrape_single.js",
-    "scrape:all": "./scrape_all.sh"
+    "scrape:single:console": "node scrape_single.js",
+    "scrape:all": "./scrape_all.sh",
+    "scrape:all:console": "./scrape_all.sh console"
   },
   "keywords": [],
   "author": "",

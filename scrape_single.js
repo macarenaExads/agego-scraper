@@ -1,6 +1,11 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+
+function generateSHA1(text) {
+  return crypto.createHash('sha1').update(text).digest('hex');
+}
 
 async function extractMainContent(page) {
   // Remove nav, header, footer, and common menu elements
@@ -21,12 +26,14 @@ async function extractMainContent(page) {
   }
 }
 
-async function scrapeSinglePage(url) {
+async function scrapeSinglePage(url, outputMode = 'file', useHashKey = false) {
   const browser = await chromium.launch();
   const page = await browser.newPage();
   
   try {
-    console.log(`Scraping: ${url}`);
+    if (outputMode !== 'console') {
+      console.log(`Scraping: ${url}`);
+    }
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     const content = await extractMainContent(page);
     
@@ -34,60 +41,105 @@ async function scrapeSinglePage(url) {
       url: url,
       content: content.trim(),
       timestamp: new Date().toISOString(),
-      contentLength: content.trim().length
+      contentLength: content.trim().length,
+      urlHash: generateSHA1(url)
     };
     
-    // Create filename from URL
-    const urlObj = new URL(url);
-    const filename = `${urlObj.hostname}${urlObj.pathname}`.replace(/[^\w\-_.]/g, '_') + '.json';
-    
-    // Create output folder if it doesn't exist
-    const outputFolder = path.join(__dirname, 'scraped_results');
-    if (!fs.existsSync(outputFolder)) {
-      fs.mkdirSync(outputFolder);
+    if (outputMode === 'console') {
+      // Output to console for capturing
+      if (useHashKey) {
+        // Format as object with hash as key (consistent with batch mode)
+        const hashResult = {};
+        hashResult[result.urlHash] = result;
+        console.log(JSON.stringify(hashResult, null, 2));
+      } else {
+        // Format as single object
+        console.log(JSON.stringify(result, null, 2));
+      }
+      return result;
+    } else {
+      // Default: save to file
+      // Create filename from URL
+      const urlObj = new URL(url);
+      const filename = `${urlObj.hostname}${urlObj.pathname}`.replace(/[^\w\-_.]/g, '_') + '.json';
+      
+      // Create output folder if it doesn't exist
+      const outputFolder = path.join(__dirname, 'scraped_results');
+      if (!fs.existsSync(outputFolder)) {
+        fs.mkdirSync(outputFolder);
+      }
+      
+      const filepath = path.join(outputFolder, filename);
+      
+      // Write to JSON file
+      fs.writeFileSync(filepath, JSON.stringify(result, null, 2));
+      console.log(`Result saved to: scraped_results/${filename}`);
+      
+      return result;
     }
-    
-    const filepath = path.join(outputFolder, filename);
-    
-    // Write to JSON file
-    fs.writeFileSync(filepath, JSON.stringify(result, null, 2));
-    console.log(`Result saved to: scraped_results/${filename}`);
-    
-    return result;
     
   } catch (error) {
     const errorResult = {
       url: url,
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      urlHash: generateSHA1(url)
     };
     
-    // Create filename from URL for error case too
-    const urlObj = new URL(url);
-    const filename = `error_${urlObj.hostname}${urlObj.pathname}`.replace(/[^\w\-_.]/g, '_') + '.json';
-    
-    // Create output folder if it doesn't exist
-    const outputFolder = path.join(__dirname, 'scraped_results');
-    if (!fs.existsSync(outputFolder)) {
-      fs.mkdirSync(outputFolder);
+    if (outputMode === 'console') {
+      // Output error to console
+      if (useHashKey) {
+        // Format as object with hash as key
+        const hashResult = {};
+        hashResult[errorResult.urlHash] = errorResult;
+        console.error(JSON.stringify(hashResult, null, 2));
+      } else {
+        // Format as single object
+        console.error(JSON.stringify(errorResult, null, 2));
+      }
+      return errorResult;
+    } else {
+      // Default: save error to file
+      // Create filename from URL for error case too
+      const urlObj = new URL(url);
+      const filename = `error_${urlObj.hostname}${urlObj.pathname}`.replace(/[^\w\-_.]/g, '_') + '.json';
+      
+      // Create output folder if it doesn't exist
+      const outputFolder = path.join(__dirname, 'scraped_results');
+      if (!fs.existsSync(outputFolder)) {
+        fs.mkdirSync(outputFolder);
+      }
+      
+      const filepath = path.join(outputFolder, filename);
+      
+      fs.writeFileSync(filepath, JSON.stringify(errorResult, null, 2));
+      console.error(`Error result saved to: scraped_results/${filename}`);
+      return errorResult;
     }
-    
-    const filepath = path.join(outputFolder, filename);
-    
-    fs.writeFileSync(filepath, JSON.stringify(errorResult, null, 2));
-    console.error(`Error result saved to: scraped_results/${filename}`);
-    return errorResult;
   } finally {
     await browser.close();
   }
 }
 
-// Get URL from command line argument
+// Get URL, output mode, and format option from command line arguments
 const url = process.argv[2];
+const outputMode = process.argv[3] || 'file'; // Default to 'file', can be 'console'
+const useHashKey = process.argv[4] === 'hash'; // If 'hash' is passed, use SHA1 as key
 
 if (!url) {
-  console.error('Usage: node scrape_single.js <URL>');
-  console.error('Example: node scrape_single.js https://www.agego.com/verification-methods');
+  console.error('Usage: node scrape_single.js <URL> [output_mode] [hash]');
+  console.error('Output modes: file (default) | console');
+  console.error('Hash option: add "hash" to use SHA1 as key in console mode');
+  console.error('Examples:');
+  console.error('  node scrape_single.js https://www.agego.com/verification-methods');
+  console.error('  node scrape_single.js https://www.agego.com/verification-methods file');
+  console.error('  node scrape_single.js https://www.agego.com/verification-methods console');
+  console.error('  node scrape_single.js https://www.agego.com/verification-methods console hash');
+  process.exit(1);
+}
+
+if (outputMode !== 'file' && outputMode !== 'console') {
+  console.error('Invalid output mode. Use "file" or "console"');
   process.exit(1);
 }
 
@@ -100,7 +152,7 @@ try {
 }
 
 if (require.main === module) {
-  scrapeSinglePage(url).catch(e => {
+  scrapeSinglePage(url, outputMode, useHashKey).catch(e => {
     console.error('Scraping failed:', e.message);
     process.exit(1);
   });
