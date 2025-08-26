@@ -1,0 +1,19 @@
+{
+  "name": "agego-scraper",
+  "version": "1.0.0",
+  "description": "AgeGo website content scraper with change detection",
+  "main": "scrape_agego.js",
+  "scripts": {
+    "scrape:agego": "node scrape_agego.js",
+    "scrape:single": "node scrape_single.js \"https://www.agego.com/about-us\"",
+    "scrape:all": "./scrape_all.sh",
+    "scrape:all:console": "./scrape_all.sh console"
+  },
+  "keywords": ["scraper", "agego", "playwright", "content-extraction", "change-detection"],
+  "dependencies": {
+    "playwright": "^1.45.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
