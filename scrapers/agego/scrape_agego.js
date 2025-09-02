@@ -12,10 +12,8 @@ const SCRAPE_CONFIG = {
   urls: [
     'https://www.agego.com/verification-methods',
     'https://www.agego.com/verification-methods/selfie',
-    // 'https://www.agego.com/verification-methods/selfie-and-official-government-id-document', >> gives 404
     'https://www.agego.com/verification-methods/credit-card',
     'https://www.agego.com/verification-methods/digital-id',
-    // 'https://www.agego.com/verification-methods/sms', >> gives 404 
     'https://www.agego.com/about-us',
     'https://www.agego.com/help-about-agego',
     'https://www.agego.com/help-verification-methods',
