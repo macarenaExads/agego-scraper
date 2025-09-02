@@ -262,18 +262,12 @@ async function scrapeAndCompare() {
   const isFirstRun = Object.keys(prevSnapshots).length === 0;
 
   for (const url of SCRAPE_CONFIG.urls) {
-    console.log(`Scraping: ${url}`);
-    const urlStartTime = Date.now();
-    
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded' });
       const content = await extractMainContent(page, url);
       const hash = hashContent(content);
       const timestamp = new Date().toISOString();
       const urlHash = generateSHA1(url);
-      
-      const urlTimeTaken = Date.now() - urlStartTime;
-      console.log(`Completed in ${urlTimeTaken}ms`);
       
       newSnapshots[urlHash] = { 
         url,

@@ -135,9 +135,6 @@ async function extractMainContent(page) {
 }
 
 async function scrapeSinglePage(url, outputMode = 'file', useHashKey = false) {
-  console.log(`Scraping: ${url}`);
-  const startTime = Date.now();
-  
   const browser = await chromium.launch();
   const page = await browser.newPage();
   
@@ -152,9 +149,6 @@ async function scrapeSinglePage(url, outputMode = 'file', useHashKey = false) {
       contentLength: content.trim().length,
       urlHash: generateSHA1(url)
     };
-    
-    const timeTaken = Date.now() - startTime;
-    console.log(`Completed in ${timeTaken}ms`);
     
     if (outputMode === 'console') {
       // Output to console for capturing
