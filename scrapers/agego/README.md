@@ -1,20 +1,21 @@
 # AgeGo Content Scraper
 
-A comprehensive web scraping solution for AgeGo documentation pages using Playwright.
+A comprehensive web scraping solution for AgeGo documentation pages using Playwright with advanced accordion handling.
 
 ## Overview
 
 This scraper provides two complementary approaches:
-- **Version 1**: Sequential scraping with change detection capabilities
-- **Version 2**: Fast parallel scraping for bulk content extraction
+- **Single URL Scraper**: `scrape_single.js` - Individual page scraping with flexible output modes
+- **Batch Scraper**: `scrape_agego.js` - Multi-page scraping with change detection capabilities
 
-## Features
+## Key Features
 
-- **Content Extraction**: Removes navigation/footer elements for clean main content
+- **Advanced Accordion Extraction**: Automatically detects and expands Material-UI accordions to capture hidden content
+- **Smart Navigation Filtering**: Removes navigation menus and focuses on main content
 - **Change Detection**: Compares content between runs and tracks changes over time
 - **Flexible Output**: File storage or console output with hash-based formatting
-- **Data Consistency**: Identical JSON structure across both versions with SHA1 hash keys
-- **Mock Testing**: Built-in mock mode for testing without affecting live websites
+- **Progress Tracking**: Shows scraping progress with timing information
+- **Error Handling**: Graceful error handling with detailed reporting
 
 ## Quick Start
 
@@ -22,30 +23,40 @@ This scraper provides two complementary approaches:
 # Install dependencies
 npm install
 
-# Change detection (monitors all AgeGo pages)
-npm run scrape:agego
-
 # Single URL scraping
-node scrape_single.js "https://www.agego.com/about-us"
+node scrape_single.js "https://www.agego.com/help-verification-methods" console
 
-# Batch parallel scraping
-./scrape_all.sh console
+# Batch scraping with change detection
+node scrape_agego.js
+
+# Shell wrapper for batch processing
+./scrape_all.sh
 ```
 
-## Usage Options
+## Usage Examples
 
-**Version 1 (Change Detection):**
-- `npm run scrape:agego` - Monitor all AgeGo pages for changes
-- `MOCK_CONTENT=1 npm run scrape:agego` - Test with mock data
+### Single URL Scraper
 
-**Version 2 (Single URL):**
-- `node scrape_single.js <URL>` - Save to file
-- `node scrape_single.js <URL> console` - Output to console
-- `node scrape_single.js <URL> console hash` - Output with hash keys
+```bash
+# Output to console
+node scrape_single.js "https://www.agego.com/about-us" console
 
-**Version 2 (Batch):**
-- `./scrape_all.sh` - Save all pages to files
-- `./scrape_all.sh console` - Output to console with hash keys
+# Save to individual file
+node scrape_single.js "https://www.agego.com/about-us" file
+
+# Output with hash-based keys (consistent with batch mode)
+node scrape_single.js "https://www.agego.com/about-us" console hash
+```
+
+### Batch Scraper
+
+```bash
+# Run change detection on all configured URLs
+node scrape_agego.js
+
+# Test mode with mock content
+MOCK_CONTENT=1 node scrape_agego.js
+```
 
 ## Data Format
 
@@ -54,38 +65,20 @@ All outputs use consistent JSON structure with SHA1 hash keys:
 {
   "hash_key": {
     "url": "https://www.agego.com/page",
-    "content": "cleaned page content",
-    "timestamp": "2025-08-26T10:00:00.000Z",
+    "content": "cleaned page content with accordion content",
+    "timestamp": "2025-09-02T12:00:00.000Z",
     "contentLength": 1234,
     "urlHash": "hash_key"
   }
 }
 ```
 
-## Scraped URLs
+## Output Files
 
-- Verification methods and guides (12 pages total)
-- Help documentation
-- About pages
-- Privacy and compliance information
+- `outputs/scraped_results/` - Individual page JSON files (single scraper)
+- `outputs/agegodoc_snapshots.json` - All pages with change detection (batch scraper)
+- `outputs/agegodoc_changed.json` - Changed pages data
 
 ## Dependencies
 
-- **playwright**: Browser automation framework
-
-## Output Files
-
-- `outputs/scraped_results/` - Individual page JSON files
-- `agegodoc_snapshots.json` - Historical snapshots for change detection
-- `agegodoc_changed.json` - Changed pages data
-
-## Version Comparison
-
-| Feature | Version 1 | Version 2 |
-|---------|-----------|-----------|
-| Execution | Sequential | Parallel |
-| Change Detection | ✅ | ❌ |
-| Speed | Slower | Faster |
-| Output Modes | File only | File or console |
-| Hash Keys | ✅ | ✅ |
-| Use Case | Monitoring changes | Quick content extraction |
+- **playwright**: Browser automation framework for Material-UI accordion handling
