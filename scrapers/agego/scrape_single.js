@@ -3,37 +3,145 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-function generateSHA1(text) {
-  return crypto.createHash('sha1').update(text).digest('hex');
+// Generate SHA1 hash for URL
+function generateSHA1(str) {
+  return crypto.createHash('sha1').update(str).digest('hex');
 }
 
 async function extractMainContent(page) {
   // Remove nav, header, footer, and common menu elements
   await page.evaluate(() => {
     document.querySelectorAll('nav, header, footer, .nav-header, .navbar, .site-header, .main-nav, .navigation, .menu, .site-nav').forEach(el => el.remove());
-    // Remove elements with role="navigation"
     document.querySelectorAll('[role="navigation"]').forEach(el => el.remove());
-    // Optionally remove sidebars or known menu containers
     document.querySelectorAll('.sidebar, .side-menu, .drawer, .drawer-menu').forEach(el => el.remove());
   });
-  
-  // Try to get main, else body
+
+  // Get base content before any expansion
   const main = await page.$('main');
+  let baseContent;
   if (main) {
-    return await main.innerText();
+    baseContent = await main.innerText();
   } else {
-    return await page.innerText('body');
+    baseContent = await page.innerText('body');
   }
+
+  try {
+    const allAccordionContent = [];
+    
+    // For Material-UI accordions, process them individually
+    // because they typically only allow one to be open at a time
+    const accordionSummaries = await page.locator('.MuiAccordionSummary-root').all();
+    
+    for (let i = 0; i < accordionSummaries.length; i++) {
+      const summary = accordionSummaries[i];
+      
+      try {
+        // Step 1: Get the accordion header text (collapsed content)
+        const headerText = await summary.innerText();
+        if (!headerText || headerText.trim().length === 0) continue;
+        
+        const accordionHeader = headerText.trim();
+        
+        // Step 2: Click to expand this accordion
+        await summary.click();
+        await page.waitForTimeout(800); // Wait for expansion animation
+        
+        // Step 3: Capture the expanded content
+        const main = await page.$('main');
+        let expandedContent;
+        if (main) {
+          expandedContent = await main.innerText();
+        } else {
+          expandedContent = await page.innerText('body');
+        }
+        
+        // Step 4: Find the expanded content using a more precise method
+        // Get the accordion content element (not the whole page)
+        const accordionParent = await summary.locator('..').first(); // Get parent accordion
+        const accordionContent = await accordionParent.innerText();
+        
+        // Split into lines and find our accordion header
+        const lines = accordionContent.split('\n').map(l => l.trim()).filter(l => l);
+        const headerIndex = lines.findIndex(line => line === accordionHeader);
+        
+        let childContent = '';
+        if (headerIndex >= 0) {
+          // Collect child content lines after the header
+          const childLines = [];
+          for (let j = headerIndex + 1; j < lines.length; j++) {
+            const line = lines[j];
+            // Include all non-empty lines - since we're getting content from the specific
+            // accordion parent, this should only contain content from this accordion
+            if (line.trim()) {
+              childLines.push(line);
+            }
+          }
+          childContent = childLines.join(' ').trim();
+        }
+        
+        // Step 5: Store the accordion content pair
+        if (childContent && childContent.trim()) {
+          allAccordionContent.push({
+            header: accordionHeader,
+            content: childContent.trim()
+          });
+        }
+        
+      } catch (error) {
+        // Continue with next accordion
+      }
+    }
+    
+    // Fallback: Try other expandable patterns if no accordions found
+    if (allAccordionContent.length > 0) {
+      // Add header/navigation elements
+      const baseLines = baseContent.split('\n').map(line => line.trim()).filter(line => line);
+      const headerLines = baseLines.filter(line => {
+        const trimmed = line.trim();
+        return trimmed && 
+               !trimmed.endsWith('?') && 
+               !allAccordionContent.some(ac => ac.header.trim() === trimmed) &&
+               trimmed.length < 100 && 
+               (trimmed.includes('Back to') || trimmed.includes('Questions') || trimmed.includes('Help'));
+      });
+      
+      let cleanContent = [];
+      cleanContent.push(...headerLines);
+      if (headerLines.length > 0) {
+        cleanContent.push(''); // Separator
+      }
+      
+      // Add each unique accordion header with its content
+      const processedHeaders = new Set();
+      
+      allAccordionContent.forEach(ac => {
+        if (!processedHeaders.has(ac.header)) {
+          processedHeaders.add(ac.header);
+          cleanContent.push(ac.header);
+          if (ac.content && ac.content.trim()) {
+            cleanContent.push(ac.content);
+          }
+        }
+      });
+      
+      return cleanContent.join('\n');
+    }
+
+  } catch (error) {
+    // Continue silently on content expansion errors
+  }
+
+  return baseContent;
 }
 
 async function scrapeSinglePage(url, outputMode = 'file', useHashKey = false) {
+  console.log(`Scraping: ${url}`);
+  const startTime = Date.now();
+  
   const browser = await chromium.launch();
   const page = await browser.newPage();
   
   try {
-    if (outputMode !== 'console') {
-      console.log(`Scraping: ${url}`);
-    }
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     const content = await extractMainContent(page);
     
@@ -44,6 +152,9 @@ async function scrapeSinglePage(url, outputMode = 'file', useHashKey = false) {
       contentLength: content.trim().length,
       urlHash: generateSHA1(url)
     };
+    
+    const timeTaken = Date.now() - startTime;
+    console.log(`Completed in ${timeTaken}ms`);
     
     if (outputMode === 'console') {
       // Output to console for capturing
@@ -79,6 +190,9 @@ async function scrapeSinglePage(url, outputMode = 'file', useHashKey = false) {
     }
     
   } catch (error) {
+    const timeTaken = Date.now() - startTime;
+    console.log(`Failed in ${timeTaken}ms: ${error.message}`);
+    
     const errorResult = {
       url: url,
       error: error.message,
